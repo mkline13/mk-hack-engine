@@ -16,3 +16,6 @@ class Vector2D:
 
     def __sub__(self, other):
         return Vector2D(self.x - other.x, self.y - other.y)
+
+    def __str__(self):
+        return f"({self.x},{self.y})"
