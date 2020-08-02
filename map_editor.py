@@ -1,12 +1,29 @@
 from maps import GameMap
-from vectors import Vector2D
 import os
 from blessed import Terminal
 
 term = Terminal()
 
+
 def clamp(val, min_, max_):
     return max(min(val, min_), max_)
+
+
+def safe_get(iterable, index, default=None):
+    if 0 <= index < len(iterable):
+        return iterable[index]
+    else:
+        return default
+
+def vec_add(l, r):
+    return tuple(l[i] + r[i] for i in range(len(l)))
+
+def vec_sub(l, r):
+    return tuple(l[i] - r[i] for i in range(len(l)))
+
+def vec_floor(l, r):
+    return tuple(l[i] // r[i] for i in range(len(l)))
+
 
 class Display:
     pass
@@ -14,41 +31,40 @@ class Display:
 
 class SimpleDisplay(Display):
     def __init__(self):
-        self.camera_pos = Vector2D(0,0)
         self.bg_buffer = []
+        self.camera_pos = (0, 0) # camera position is the center of the screen
+
+    def camera_move(self, pos):
+        self.camera_pos = pos
+
+    def camera_center(self, pos):
+        self.camera_pos = vec_sub(pos, vec_floor(self.get_screen_size(), (2,2)))
 
     def generate_bg_buffer(self, gmap):
         self.bg_buffer = [row for row in gmap.tiles]
 
-    def update(self, camera_pos):
-        # update camera position
-        self.camera_pos = camera_pos
+    def update(self):
+        # render bg_buffer to screen
+        sw, sh = screen_dim = self.get_screen_size()
+        offset_x, offset_y = self.camera_pos
 
-        # Clear terminal
-        print("\x1b[2J\x1b[H", end='')
+        for row in range(sh):
+            r = safe_get(self.bg_buffer, row+offset_y)
+            if r is not None:
+                rendered_row = []
+                for col in range(sw):
+                    tile = safe_get(r, col+offset_x, ' ')
 
-        screen_width, screen_height = self.screen_size()
-        print(screen_width, screen_height)
-        screen_center = Vector2D(screen_width//2, screen_height//2)
-        screen_ul = self.camera_pos - screen_center
-
-        map_width, map_height = 4, 4
-
-        left_clip = max(0,screen_ul.x)
-        right_clip = min(screen_width, screen_ul.x+screen_width)
-
-        left_pad = screen_ul.x * -1
-        right_pad = right_clip - map_width + left_clip
-
-        # Print bg_buffer to screen
-        for line in range(screen_ul.y, screen_ul.y + screen_height):
-            if line in range(map_height):
-                view = self.bg_buffer[line]
-                print('|' + (' ' * left_pad) + ''.join(view[left_clip:right_clip]) + (' ' * right_pad) + '|    ')
+                    rendered_row.append(tile)
+                self.print_ln(''.join(rendered_row))
             else:
-                print('|' + (' ' * screen_width) + '|')
+                self.print_ln(' ' * sw)
 
-    def screen_size(self):
+
+    def print_ln(self, line):
+        print('|' + line + '|')
+
+    def get_screen_size(self):
         term_size = os.get_terminal_size()
         if term_size.columns == 0 or term_size.lines == 0:
             return 40, 20
@@ -75,28 +91,8 @@ def main():
     editor.load_map({'tiles': '#####..##..#####', 'w': 4, 'h': 4, 'offset': 0, 'properties': {}})
     display = SimpleDisplay()
     display.generate_bg_buffer(editor.map)
-
-    camera = Vector2D(0,0)
-
-    display.update(camera)
-
-    while True:
-        with term.cbreak():
-            inp = term.inkey()
-        if inp == 'q':
-            break
-        elif inp == 'u':
-            display.update(camera)
-        elif repr(inp) == 'KEY_LEFT':
-            camera += Vector2D(-1, 0)
-        elif repr(inp) == 'KEY_RIGHT':
-            camera += Vector2D(1, 0)
-        elif repr(inp) == 'KEY_UP':
-            camera += Vector2D(0, -1)
-        elif repr(inp) == 'KEY_LEFT':
-            camera += Vector2D(0, 1)
-        else:
-            print(inp)
+    display.camera_center((1,1))
+    display.update()
 
 
 if __name__ == '__main__':
