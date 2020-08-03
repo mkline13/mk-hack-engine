@@ -1,5 +1,5 @@
 from maps import GameMap
-import os
+from time import sleep
 from blessed import Terminal
 
 term = Terminal()
@@ -34,52 +34,44 @@ class Display:
 
 class SimpleDisplay(Display):
     def __init__(self):
-        self.bg_buffer = []
+        self.screen_buffer = []
         self.camera_pos = (0, 0) # camera position is the center of the screen
+        self.screen_size = (78, 20)
 
     def camera_move(self, pos):
         self.camera_pos = pos
 
     def camera_center(self, pos):
-        self.camera_pos = vec_sub(pos, vec_floor(self.get_screen_size(), (2,2)))
+        self.camera_pos = vec_sub(pos, vec_floor(self.screen_size, (2,2)))
 
     def generate_bg_buffer(self, gmap):
-        self.bg_buffer = [row for row in gmap.tiles]
+        self.screen_buffer = [row for row in gmap.tiles]
 
-    def update(self):
+    def flip(self):
         # clear screen
         print(term.home, term.clear, end='')
 
         # render bg_buffer to screen
         # get screen dimensions and camera offset
-        sw, sh = self.get_screen_size()
+        sw, sh = self.screen_size
         offset_x, offset_y = self.camera_pos
 
         # render
+        print('|' + ('-' * sw) + '|')
         for row in range(sh):
             # get the row
-            r = safe_get(self.bg_buffer, row+offset_y)
+            r = safe_get(self.screen_buffer, row + offset_y)
             if r is not None:
                 # render the row if it exists
                 rendered_row = []
+                print('|', end='')
                 for col in range(sw):
-                    tile = safe_get(r, col+offset_x, ' ')
-
-                    rendered_row.append(tile)
-                self.print_ln(''.join(rendered_row))
+                    print(safe_get(r, col+offset_x, ' '), sep='', end='')
+                print('|')
             else:
                 # otherwise render a blank row
-                self.print_ln(' ' * sw)
-
-    def print_ln(self, line):
-        print('|' + line + '|')
-
-    def get_screen_size(self):
-        term_size = os.get_terminal_size()
-        if term_size.columns == 0 or term_size.lines == 0:
-            return 60, 24
-        else:
-            return term_size.columns, term_size.lines
+                print('|' + (' ' * sw) + '|')
+        print('|' + ('-' * sw) + '|')
 
 
 class BlessedDisplay(Display):
@@ -98,13 +90,37 @@ class MapEditor:
 def main():
     editor = MapEditor()
     editor.load_map({'tiles': '#####..##..#####', 'w': 4, 'h': 4, 'offset': 0, 'properties': {}})
+
     display = SimpleDisplay()
     display.generate_bg_buffer(editor.map)
-    display.camera_center((2, 2))
-    display.update()
-    # NEXT TASK: take keyboard input to move around screen
-    # THEN: show cursor at center point
-    # THEN: allow user to enter characters
+
+    cursor_loc = (10,10)
+
+    display.camera_center(cursor_loc)
+    display.flip()
+
+    while True:
+        # NEXT TASK: take keyboard input to move around screen
+        with term.cbreak(), term.hidden_cursor():
+            inp = term.inkey()
+
+            if inp == 'q':
+                break
+            elif repr(inp) == 'KEY_LEFT':
+                cursor_loc = vec_add(cursor_loc, (-1,0))
+            elif repr(inp) == 'KEY_RIGHT':
+                cursor_loc = vec_add(cursor_loc, (1, 0))
+            elif repr(inp) == 'KEY_UP':
+                cursor_loc = vec_add(cursor_loc, (0, -1))
+            elif repr(inp) == 'KEY_DOWN':
+                cursor_loc = vec_add(cursor_loc, (0, 1))
+
+            # THEN: show cursor at center point
+            display.camera_center(cursor_loc)
+            display.flip()
+
+    print(term.home, term.clear, end='')
+    print("ALL DONE!")
 
 
 if __name__ == '__main__':
