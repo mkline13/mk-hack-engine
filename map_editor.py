@@ -1,103 +1,65 @@
-from maps import GameMap
+from maps import TileMap
+from ascii_engine import TileBuffer, Display
 from time import sleep
 from blessed import Terminal
 
 term = Terminal()
 
 
-def clamp(val, min_, max_):
-    return max(min(val, min_), max_)
-
-
-def safe_get(iterable, index, default=None):
-    if 0 <= index < len(iterable):
-        return iterable[index]
-    else:
-        return default
-
-
-def vec_add(l, r):
-    return tuple(l[i] + r[i] for i in range(len(l)))
-
-
-def vec_sub(l, r):
-    return tuple(l[i] - r[i] for i in range(len(l)))
-
-
-def vec_floor(l, r):
-    return tuple(l[i] // r[i] for i in range(len(l)))
-
-
-class Display:
-    pass
-
-
-class SimpleDisplay(Display):
-    def __init__(self):
-        self.screen_buffer = []
-        self.camera_pos = (0, 0) # camera position is the center of the screen
-        self.screen_size = (78, 20)
-
-    def camera_move(self, pos):
-        self.camera_pos = pos
-
-    def camera_center(self, pos):
-        self.camera_pos = vec_sub(pos, vec_floor(self.screen_size, (2,2)))
-
-    def generate_bg_buffer(self, gmap):
-        self.screen_buffer = [row for row in gmap.tiles]
-
-    def flip(self):
-        # clear screen
-        print(term.home, term.clear, end='')
-
-        # render bg_buffer to screen
-        # get screen dimensions and camera offset
-        sw, sh = self.screen_size
-        offset_x, offset_y = self.camera_pos
-
-        # render
-        print('|' + ('-' * sw) + '|')
-        for row in range(sh):
-            # get the row
-            r = safe_get(self.screen_buffer, row + offset_y)
-            if r is not None:
-                # render the row if it exists
-                rendered_row = []
-                print('|', end='')
-                for col in range(sw):
-                    print(safe_get(r, col+offset_x, ' '), sep='', end='')
-                print('|')
-            else:
-                # otherwise render a blank row
-                print('|' + (' ' * sw) + '|')
-        print('|' + ('-' * sw) + '|')
-
-
-class BlessedDisplay(Display):
-    pass
-
-
 class MapEditor:
-    def __init__(self):
+    def __init__(self, map_):
         # load empty game map
-        self.map = GameMap()
+        self.map = map_
 
     def load_map(self, map_data: dict) -> None:
         self.map.deserialize(map_data)
 
 
 def main():
-    editor = MapEditor()
-    editor.load_map({'tiles': '#####..##..#####', 'w': 4, 'h': 4, 'offset': 0, 'properties': {}})
+    from random import choice, randint
 
-    display = SimpleDisplay()
-    display.generate_bg_buffer(editor.map)
+    # gmap = TileMap()
+    # editor = MapEditor(gmap)
+    # editor.load_map({'tiles': '#####..##..#####', 'w': 4, 'h': 4, 'offset': 0})
 
-    cursor_loc = (10,10)
+    # CONSTANTS
+    SCREEN_DIM = 60, 20
+    MAP_DIM = 100, 50
+    BG = '|'
 
-    display.camera_center(cursor_loc)
+    # SETUP
+    display = Display(*SCREEN_DIM, bg=BG)
+    screen_buffer = TileBuffer(*MAP_DIM, default='.')
+    map_buffer = TileBuffer(*MAP_DIM, default='.')
+
+    display.clear()
+
+    # Draw a bunch of blobs to the map buffer
+    tw, th = 5, 5
+    iterations = 100
+    stamp = TileBuffer(tw, th, tiles=[choice(['#', '@', '']) for _ in range(tw * th)])
+    for i in range(iterations):
+        stamp.draw(map_buffer, randint(-1, MAP_DIM[0]), randint(-1, MAP_DIM[1]))
+
+    # Initialize the player graphic
+    player = TileBuffer(3, 1, tiles=['{', '&', '}'])
+
+    # Set player position
+    cam_x, cam_y = 2, 2
+    player_x, player_y = SCREEN_DIM[0] // 2, SCREEN_DIM[1] // 2
+
+    # Draw the map to the screen buffer
+    map_buffer.draw(screen_buffer, 0, 0)
+
+    # Draw the player to the screen buffer
+    player.draw(screen_buffer, -cam_x+player_x, -cam_y+player_y)
+
+    # Transfer the screen buffer to the display
+    screen_buffer.draw(display, cam_x, cam_y)
+
+    # Print the screen
     display.flip()
+
 
     while True:
         # NEXT TASK: take keyboard input to move around screen
@@ -107,19 +69,31 @@ def main():
             if inp == 'q':
                 break
             elif repr(inp) == 'KEY_LEFT':
-                cursor_loc = vec_add(cursor_loc, (-1,0))
+                cam_x += 1
             elif repr(inp) == 'KEY_RIGHT':
-                cursor_loc = vec_add(cursor_loc, (1, 0))
+                cam_x -= 1
             elif repr(inp) == 'KEY_UP':
-                cursor_loc = vec_add(cursor_loc, (0, -1))
+                cam_y += 1
             elif repr(inp) == 'KEY_DOWN':
-                cursor_loc = vec_add(cursor_loc, (0, 1))
+                cam_y -= 1
 
-            # THEN: show cursor at center point
-            display.camera_center(cursor_loc)
+            # Clear the screen + fill the display buffer with something
+            display.clear()
+            display.fill(BG)
+
+            # Draw the map buffer to the screen buffer
+            map_buffer.draw(screen_buffer, 0, 0)
+
+            # Draw the player to the screen buffer
+            player.draw(screen_buffer, -cam_x+player_x, -cam_y+player_y)
+
+            # Draw the screen buffer to the display
+            screen_buffer.draw(display, cam_x, cam_y)
+
+            # Print the screen
             display.flip()
 
-    print(term.home, term.clear, end='')
+    display.clear()
     print("ALL DONE!")
 
 

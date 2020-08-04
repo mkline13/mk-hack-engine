@@ -1,19 +1,33 @@
+from blessed import Terminal
+
+term = Terminal()
+
 class TileBuffer:
     """
     Stores an array of strings to be used for drawing ascii graphics like Rogue or NetHack.
 
     Provides methods for viewing this array, manipulating it, and drawing it onto other TileBuffers.
     """
-    def __init__(self, w, h, tiles=[]):
+    def __init__(self, w, h, tiles=[], default=''):
         """
+        Initializes variables and fills up tiles array. If array provided is too short,
+        fills up with the value provided by default.
+
         :param w: the width of the buffer
         :param h: the height of the buffer
         :param tiles: a 1D array containing a list of tiles to be drawn in the specified dimensions.
+        :param default: if too few tiles are provided, uses this value to fill the remainder.
         """
         self._w = w
         self._h = h
 
-        self._tiles = tiles[:w*h]
+        self._tiles = []
+
+        for i in range(w * h):
+            if i < len(tiles):
+                self._tiles.append(tiles[i])
+            else:
+                self._tiles.append(default)
 
     @property
     def tiles(self):
@@ -40,6 +54,10 @@ class TileBuffer:
     def height(self):
         return self._h
 
+    def fill(self, char=' '):
+        for i in range(len(self._tiles)):
+            self._tiles[i] = char
+
     def get_tile(self, x, y, default=''):
         """
         :param x: x position to get
@@ -61,14 +79,16 @@ class TileBuffer:
         :param y: y position for drawing
         """
         for index, tile in enumerate(self._tiles):
-            new_x = index % self._w + x
-            new_y = index // self._h + y
+            new_x = (index % self._w) + x
+            new_y = (index // self._w) + y
             # check to see if drawing inside the buffer to prevent IndexError / weird wrapping
             if 0 <= new_x < tile_buffer.width and 0 <= new_y < tile_buffer.height:
                 # write to screen if the tile is not blank
                 if tile != '':
                     new_index = new_y * tile_buffer.width + new_x
                     tile_buffer.tiles[new_index] = tile
+
+
 
 
 class Display(TileBuffer):
@@ -84,3 +104,6 @@ class Display(TileBuffer):
     def flip(self):
         for row in self.tiles_2d:
             print(*row, sep='')
+
+    def clear(self):
+        print(term.home, term.clear, end='')

@@ -1,6 +1,6 @@
 from vectors import Vector2D
 
-class GameMap:
+class TileMap:
     """
     Implements a class for storing map data for games with ASCII-based graphics.
 
@@ -56,7 +56,7 @@ class GameMap:
 
     @property
     def dimensions(self):
-        return Vector2D(len(self.tiles), len(self.tiles[0]))
+        return len(self.tiles), len(self.tiles[0])
 
     def get_tile(self, x: int, y: int) -> str:
         try:
@@ -68,12 +68,12 @@ class GameMap:
         dict_rep = {}
         offset, tiles = self.dump_tiles()
         dict_rep['tiles'] = tiles
-        dict_rep['w'], dict_rep['h'] = self.dimensions.x, self.dimensions.y
+        dict_rep['w'], dict_rep['h'] = self.dimensions
         dict_rep['offset'] = offset
         dict_rep['properties'] = self.properties
         return dict_rep
 
     def deserialize(self, dict_rep) -> None:
         self.load_tiles(dict_rep['w'], dict_rep['h'], dict_rep['offset'], dict_rep['tiles'])
-        self.properties = dict_rep['properties']
+        self.properties = dict_rep.get('properties', {})
 

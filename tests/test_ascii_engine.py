@@ -1,12 +1,24 @@
 from ascii_engine import TileBuffer, Display
 
-def test_TileBuffer(w=4, h=3, tiles=[0,1,2,3,4,5,6,7,8,9,10,11]):
-    tb = TileBuffer(w, h, tiles)
-    print(tb.tiles)
-    print(tb.tiles_2d)
+def test_TileBuffer(w=4, h=3, tiles=[0,1,2,3,4,5,6,7,8,9,10]):
+    tb = TileBuffer(w, h, ['x' for _ in range(w * h)])
+    print('FILLING WITH CORRECT NUMBER OF TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
 
-    for x, y in multi_range(tb.width, tb.height):
-        print(tb.get_tile(x, y))
+    tb = TileBuffer(w, h, ['x' for _ in range(w * h - 3)])
+    print('FILLING WITH TOO FEW TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
+
+    tb = TileBuffer(w, h, ['x' for _ in range(w * h + 3)])
+    print('FILLING WITH TOO MANY TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
+
+def test_TileBuffer_defaults(w=4, h=3, tiles=[0,1,2,3,4,5,6,7,8,9,10]):
+    tb = TileBuffer(20, 20, default='#')
+    print('FILLING WITH CORRECT NUMBER OF TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
+
+    tb = TileBuffer(w, h, ['x' for _ in range(w * h - 3)])
+    print('FILLING WITH TOO FEW TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
+
+    tb = TileBuffer(w, h, ['x' for _ in range(w * h + 3)])
+    print('FILLING WITH TOO MANY TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
 
 
 def test_TileBuffer_draw(tb1=TileBuffer(15, 8, tiles=['-' for _ in range(120)]), tb2=TileBuffer(2, 2, tiles=['#', '#', '', '#',])):
@@ -45,14 +57,52 @@ def test_Display():
     obj2.draw(map_buffer, 4, 4)
     player.draw(map_buffer, 5, 5)
 
-    map_buffer.draw(display, -12, 1)
+    map_buffer.draw(display, 1, 1)
     display.flip()
     print()
 
 
+def formula_check():
+    """
+    check my index -> coordinate formula
+    """
+    W = 6
+    H = 4
+
+    # check_array = [[(x,y) for x in range(W)] for y in range(H)]
+    # print(check_array)
+    for i in range(W*H):
+        if i%W == 0:
+            print()
+        print(i%W, i//W)
+
+
+def test_draw():
+    from time import sleep
+
+    SCREEN_DIM = 25, 12
+    DRAW_POS = 1, 1
+    display = Display(*SCREEN_DIM, bg=' - ')
+    map_buffer = TileBuffer(6, 4, default=' # ')
+
+    print('ORIGINAL')
+    map_buffer.draw(display, *DRAW_POS)
+    display.flip()
+
+    # print('\nCHANGED')
+    # display.fill(' - ')
+    # map_buffer.draw_debug(display, *DRAW_POS)
+    # display.flip()
+
+
+
+
+
+
 if __name__ == '__main__':
-    # test_TileBuffer()
+    # test_TileBuffer_defaults()
     # test_TileBuffer_draw()
-    test_Display()
-    # main()
+    # test_Display()
+    # formula_check()
+    test_draw()
     pass
