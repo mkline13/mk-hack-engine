@@ -9,7 +9,7 @@ class TilePlane:
 
         :param w: width of array
         :param h: height of array
-        :param tilelist: 2D list containing chars. Assumes the user will enter the correct data format
+        :param tilelist: 2D list containing chars. Assumes the user will supply a list of the correct format.
         """
         self._w = w
         self._h = h
@@ -172,6 +172,27 @@ class TilePlane:
         return TilePlane(w, h, tilelist_2D)
 
     @staticmethod
+    def new_from_2D_padded(w, h, tilelist, default=' '):
+        """
+        A constructor for creating a TilePlane when the dimensions of the input tilelist may not be certain
+        :param w: width of new TilePlane
+        :param h: height of new TilePlane
+        :param tilelist: A 2D list of tiles that will be padded up to the correct size
+        :param default: value for padding
+        :return:
+        """
+        tp = TilePlane.new_filled(w, h, default)
+        blank_tile_list = [[default for x in range(w)] for y in range(h)]
+        for x, y in TilePlane.iterate_2D(w, h):
+            try:
+                val = tilelist[x][y]
+            except IndexError:
+                val = default
+
+            tp.set_tile(x, y, val)
+        return tp
+
+    @staticmethod
     def new_filled(w, h, fill):
         """
         A constructor for creating a TilePlane of a certain size filled with a certain value
@@ -180,5 +201,4 @@ class TilePlane:
         :param fill: char to fill TilePlane with
         :return:
         """
-        tilelist = TilePlane.tilelist_1D_to_2D(w, h, default=fill)
-        return TilePlane(w, h, tilelist)
+        return TilePlane(w, h, [[fill for y in range(h)] for x in range(w)])

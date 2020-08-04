@@ -26,6 +26,7 @@ def test_TilePlane_get_set_tile():
     W = 10
     H = 6
     tp = TilePlane.new_filled(W, H, '0')
+    print(*tp.tilelist, sep='\n')
     print("ORIGINAL:")
     tp.display()
     x, y = 2, 4
@@ -79,10 +80,29 @@ def test_TilePlane_fill():
     main_plane.display()
     print()
 
+def test_TilePlane_new_from_2D_padded():
+    print("TESTING TilePlane.new_from_2D_padded()")
+    W, H = 5, 4
+    tile_list = [[1,2,3],[4,5],[7,8,9,0],[1,2,3,4,5,6]]
+    tp = TilePlane.new_from_2D_padded(W, H, tile_list, '#')
+    tp.display()
+    print()
+
+
+def test_TilePlane_new_filled():
+    print("TESTING TilePlane.new_filled()")
+    W = 10
+    H = 6
+    tp = TilePlane.new_filled(W, H, '0')
+    tp.display()
+
+
 if __name__ == '__main__':
+    test_TilePlane_new_filled()
     test_TilePlane_conversions()
     test_TilePlane_display()
     test_TilePlane_get_set_tile()
     test_TilePlane_project()
     test_TilePlane_subplane()
     test_TilePlane_fill()
+    test_TilePlane_new_from_2D_padded()
