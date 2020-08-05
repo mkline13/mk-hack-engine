@@ -1,108 +1,108 @@
-from ascii_engine import TileBuffer, Display
+from ascii_engine import TilePlane
 
-def test_TileBuffer(w=4, h=3, tiles=[0,1,2,3,4,5,6,7,8,9,10]):
-    tb = TileBuffer(w, h, ['x' for _ in range(w * h)])
-    print('FILLING WITH CORRECT NUMBER OF TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
-
-    tb = TileBuffer(w, h, ['x' for _ in range(w * h - 3)])
-    print('FILLING WITH TOO FEW TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
-
-    tb = TileBuffer(w, h, ['x' for _ in range(w * h + 3)])
-    print('FILLING WITH TOO MANY TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
-
-def test_TileBuffer_defaults(w=4, h=3, tiles=[0,1,2,3,4,5,6,7,8,9,10]):
-    tb = TileBuffer(20, 20, default='#')
-    print('FILLING WITH CORRECT NUMBER OF TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
-
-    tb = TileBuffer(w, h, ['x' for _ in range(w * h - 3)])
-    print('FILLING WITH TOO FEW TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
-
-    tb = TileBuffer(w, h, ['x' for _ in range(w * h + 3)])
-    print('FILLING WITH TOO MANY TILES:', *tb.tiles_2d, sep='\n', end='\n\n')
+def test_TilePlane_conversions():
+    print("TESTING conversions")
+    W = 4
+    H = 5
+    tiles_1D = [str(i) for i in range(W*H)]
+    print("ORIGINAL:\n", tiles_1D, end='\n\n')
+    tiles_2D = TilePlane.tilelist_1D_to_2D(W, H, tiles_1D, default='.')
+    print("2D VERSION:\n", *tiles_2D, sep='\n', end='\n\n')
+    converted_back_to_1D = TilePlane.tilelist_2D_to_1D(tiles_2D)
+    print("2D TO 1D:\n", tiles_1D, end='\n\n')
 
 
-def test_TileBuffer_draw(tb1=TileBuffer(15, 8, tiles=['-' for _ in range(120)]), tb2=TileBuffer(2, 2, tiles=['#', '#', '', '#',])):
-    print(*tb1.tiles_2d, sep='\n')
-    print()
-    print(*tb2.tiles_2d, sep='\n')
-    print()
-    x, y = 1, 3
-    print(f"DRAWING AT ({x}, {y})")
-    tb2.draw(tb1, x, y)
-    x, y = 6, 5
-    print(f"DRAWING AT ({x}, {y})")
-    tb2.draw(tb1, x, y)
-    for r in tb1.tiles_2d:
-        print(*r, sep='')
-
-
-def test_Display():
-    from blessed import Terminal
-    term = Terminal()
-    print(term.home + term.clear, end='')
-
-    bg = '#'
-    W, H = 25, 12
-    DIM = 30
-    display = Display(W, H, bg=bg)
-    map_buffer = TileBuffer(DIM, DIM, tiles=['.' for _ in range(DIM*DIM)])
-
-    obj1 = TileBuffer(2, 2, tiles = [term.white_on_black(t) if t != '' else '' for t in ['#', '#', '', '#',]])
-    obj2 = TileBuffer(3, 4, tiles = [1,2,3,4,5,6,7,8,9,0,1,2])
-    player = TileBuffer(1, 1, tiles = [term.yellow_on_black('@')])
-
-    obj1.draw(map_buffer, 1, 1)
-    obj1.draw(map_buffer, 10, 10)
-    obj1.draw(map_buffer, 20, 5)
-    obj2.draw(map_buffer, 4, 4)
-    player.draw(map_buffer, 5, 5)
-
-    map_buffer.draw(display, 1, 1)
-    display.flip()
+def test_TilePlane_display():
+    print("TESTING tp.display()")
+    W = 4
+    H = 5
+    tp = TilePlane.new_from_1D(W, H, [str(i%W) for i in range(W*H)], default='.')
+    tp.display()
     print()
 
 
-def formula_check():
-    """
-    check my index -> coordinate formula
-    """
-    W = 6
-    H = 4
+def test_TilePlane_get_set_tile():
+    print("TESTING tp.get_tile() and tp.set_tile()")
+    W = 10
+    H = 6
+    tp = TilePlane.new_filled(W, H, '0')
+    print(*tp.tilelist, sep='\n')
+    print("ORIGINAL:")
+    tp.display()
+    x, y = 2, 4
+    val = '#'
+    tp.set_tile(x, y, val)
+    print(f"AFTER SETTING TILE {x},{y} to {val}:")
+    tp.display()
+    print(f"GET TILE {x},{y}:", tp.get_tile(x, y))
+    print()
 
-    # check_array = [[(x,y) for x in range(W)] for y in range(H)]
-    # print(check_array)
-    for i in range(W*H):
-        if i%W == 0:
-            print()
-        print(i%W, i//W)
+def test_TilePlane_project():
+    print("TESTING tp.project()")
+    print("BACKGROUND:")
+    bg_tp = TilePlane.new_filled(20, 20, '.')
+    bg_tp.display()
+    print("FOREGROUND:")
+    fg_tp = TilePlane.new_filled(2, 2, '@')
+    fg_tp.display()
+    print("PROJECTED:")
+    fg_tp.project(bg_tp, 1, 1)
+    fg_tp.project(bg_tp, -1, 4)
+    fg_tp.project(bg_tp, 19, 8)
+    fg_tp.project(bg_tp, 22, 11)
+    fg_tp.project(bg_tp, 5, -1)
+    fg_tp.project(bg_tp, 12, 19)
+    fg_tp.project(bg_tp, 25, 25)
+    bg_tp.display()
+    print()
+
+def test_TilePlane_subplane():
+    print("TESTING tp.subplane()")
+    print("MAIN:")
+    w, h = 20, 10
+    main_plane = TilePlane.new_from_1D(w, h, ["abcdefghijklmnopqrstuvwxyz"[i%26] for i in range(w*h)])
+    main_plane.display()
+    print()
+    print("SUB:")
+    sub = main_plane.subplane(2,2,4,4)
+    sub.display()
+    print()
+
+def test_TilePlane_fill():
+    print("TESTING tp.fill()")
+    print("BEFORE:")
+    w, h = 6, 6
+    main_plane = TilePlane.new_from_1D(w, h, ["abcdefghijklmnopqrstuvwxyz"[i % 26] for i in range(w * h)])
+    main_plane.display()
+    print()
+    print("AFTER:")
+    main_plane.fill('&')
+    main_plane.display()
+    print()
+
+def test_TilePlane_new_from_2D_padded():
+    print("TESTING TilePlane.new_from_2D_padded()")
+    W, H = 5, 4
+    tile_list = [[1,2,3],[4,5],[7,8,9,0],[1,2,3,4,5,6]]
+    tp = TilePlane.new_from_2D_padded(W, H, tile_list, '#')
+    tp.display()
+    print()
 
 
-def test_draw():
-    from time import sleep
-
-    SCREEN_DIM = 25, 12
-    DRAW_POS = 1, 1
-    display = Display(*SCREEN_DIM, bg=' - ')
-    map_buffer = TileBuffer(6, 4, default=' # ')
-
-    print('ORIGINAL')
-    map_buffer.draw(display, *DRAW_POS)
-    display.flip()
-
-    # print('\nCHANGED')
-    # display.fill(' - ')
-    # map_buffer.draw_debug(display, *DRAW_POS)
-    # display.flip()
-
-
-
-
+def test_TilePlane_new_filled():
+    print("TESTING TilePlane.new_filled()")
+    W = 10
+    H = 6
+    tp = TilePlane.new_filled(W, H, '0')
+    tp.display()
 
 
 if __name__ == '__main__':
-    # test_TileBuffer_defaults()
-    # test_TileBuffer_draw()
-    # test_Display()
-    # formula_check()
-    test_draw()
-    pass
+    test_TilePlane_new_filled()
+    test_TilePlane_conversions()
+    test_TilePlane_display()
+    test_TilePlane_get_set_tile()
+    test_TilePlane_project()
+    test_TilePlane_subplane()
+    test_TilePlane_fill()
+    test_TilePlane_new_from_2D_padded()

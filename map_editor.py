@@ -1,65 +1,80 @@
 from maps import TileMap
-from ascii_engine import TileBuffer, Display
+from ascii_engine import TilePlane
 from time import sleep
 from blessed import Terminal
 
 term = Terminal()
 
+class Cursor:
+    def __init__(self, x, y, cam_offset_x, cam_offset_y):
+        self.x = x
+        self.y = y
+        self._cam_offset_x = cam_offset_x
+        self._cam_offset_y = cam_offset_y
 
-class MapEditor:
-    def __init__(self, map_):
-        # load empty game map
-        self.map = map_
+    def draw(self, tile_plane):
+        char = tile_plane.get_tile(self.x, self.y, default=' ')
+        tile_plane.set_tile(self.x, self.y, term.black_on_blue(char))
 
-    def load_map(self, map_data: dict) -> None:
-        self.map.deserialize(map_data)
+    def get_camera_pos(self):
+        return -self.x + self._cam_offset_x, -self.y + self._cam_offset_y
+
+class Text:
+    def __init__(self, text, visible=False):
+        self.text = text
+        self.visible = visible
+
+    def draw(self, tile_plane, x, y):
+        if self.visible:
+            current_x = x
+            current_y = y
+            for char in self.text:
+                if char != '\n':
+                    tile_plane.set_tile(current_x, current_y, char)
+                    current_x += 1
+                else:
+                    current_x = x
+                    current_y += 1
+
+    def style(self, style_func):
+        new_string = []
+        for char in self.text:
+            new_string.append(style_func(char))
+        self.text = ''.join(new_string)
 
 
 def main():
-    from random import choice, randint
-
-    # gmap = TileMap()
-    # editor = MapEditor(gmap)
-    # editor.load_map({'tiles': '#####..##..#####', 'w': 4, 'h': 4, 'offset': 0})
-
     # CONSTANTS
     SCREEN_DIM = 60, 20
+    HALF_SCREEN_DIM = SCREEN_DIM[0] // 2, SCREEN_DIM[1] // 2
     MAP_DIM = 100, 50
     BG = '|'
 
     # SETUP
-    display = Display(*SCREEN_DIM, bg=BG)
-    screen_buffer = TileBuffer(*MAP_DIM, default='.')
-    map_buffer = TileBuffer(*MAP_DIM, default='.')
+    VALID_CHARS = r'abcdefghijklmnopqrstuvwxyz1234567890-[]\;:/?<>,.~!@#$%^&*()_={}|` '
+    previous_char = ' '
 
-    display.clear()
+    display = TilePlane.new_filled(*SCREEN_DIM, BG)
+    screen_buffer = TilePlane.new_filled(*MAP_DIM, fill='')
+    map_buffer = TilePlane.new_filled(*MAP_DIM, fill=' ')
+    text_display = Text("Hello World!", visible=True)
 
-    # Draw a bunch of blobs to the map buffer
-    tw, th = 5, 5
-    iterations = 100
-    stamp = TileBuffer(tw, th, tiles=[choice(['#', '@', '']) for _ in range(tw * th)])
-    for i in range(iterations):
-        stamp.draw(map_buffer, randint(-1, MAP_DIM[0]), randint(-1, MAP_DIM[1]))
-
-    # Initialize the player graphic
-    player = TileBuffer(3, 1, tiles=['{', '&', '}'])
-
-    # Set player position
-    cam_x, cam_y = 2, 2
-    player_x, player_y = SCREEN_DIM[0] // 2, SCREEN_DIM[1] // 2
+    cursor = Cursor(25, 5, *HALF_SCREEN_DIM)
 
     # Draw the map to the screen buffer
-    map_buffer.draw(screen_buffer, 0, 0)
-
-    # Draw the player to the screen buffer
-    player.draw(screen_buffer, -cam_x+player_x, -cam_y+player_y)
-
+    map_buffer.project(screen_buffer, 0, 0)
+    # Draw the cursor onto the screen buffer
+    cursor.draw(screen_buffer)
     # Transfer the screen buffer to the display
-    screen_buffer.draw(display, cam_x, cam_y)
+    screen_buffer.project(display, *cursor.get_camera_pos())
+
+    # Display text
+    text_display.text = f" POS: ({cursor.x}, {cursor.y}) \n CHAR: {map_buffer.get_tile(cursor.x, cursor.y)} "
+    text_display.draw(display, 3, 1)
 
     # Print the screen
-    display.flip()
-
+    print(term.home + term.clear, end='')
+    display.display()
 
     while True:
         # NEXT TASK: take keyboard input to move around screen
@@ -68,32 +83,41 @@ def main():
 
             if inp == 'q':
                 break
+            elif inp in VALID_CHARS:
+                map_buffer.set_tile(cursor.x, cursor.y, inp[0])
+                previous_char = inp[0]
+            elif inp == '\t':
+                map_buffer.set_tile(cursor.x, cursor.y, previous_char)
             elif repr(inp) == 'KEY_LEFT':
-                cam_x += 1
+                cursor.x -= 1
             elif repr(inp) == 'KEY_RIGHT':
-                cam_x -= 1
+                cursor.x += 1
             elif repr(inp) == 'KEY_UP':
-                cam_y += 1
+                cursor.y -= 1
             elif repr(inp) == 'KEY_DOWN':
-                cam_y -= 1
+                cursor.y += 1
 
-            # Clear the screen + fill the display buffer with something
-            display.clear()
+            # UPDATE STUFF
+
+            # Fill the screen
             display.fill(BG)
 
-            # Draw the map buffer to the screen buffer
-            map_buffer.draw(screen_buffer, 0, 0)
+            # Draw the map to the screen buffer
+            map_buffer.project(screen_buffer, 0, 0)
+            # Draw the cursor onto the screen buffer
+            cursor.draw(screen_buffer)
+            # Transfer the screen buffer to the display
+            screen_buffer.project(display, *cursor.get_camera_pos())
 
-            # Draw the player to the screen buffer
-            player.draw(screen_buffer, -cam_x+player_x, -cam_y+player_y)
-
-            # Draw the screen buffer to the display
-            screen_buffer.draw(display, cam_x, cam_y)
+            # Update text display
+            text_display.text = f" POS: ({cursor.x}, {cursor.y}) \n CHAR: {map_buffer.get_tile(cursor.x, cursor.y)} "
+            text_display.draw(display, 3, 1)
 
             # Print the screen
-            display.flip()
+            print(term.home + term.clear, end='')
+            display.display()
 
-    display.clear()
+    print(term.home + term.clear, end='')
     print("ALL DONE!")
 
 
