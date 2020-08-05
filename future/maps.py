@@ -1,4 +1,3 @@
-from vectors import Vector2D
 
 class TileMap:
     """
